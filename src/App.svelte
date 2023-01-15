@@ -1,54 +1,157 @@
 <script>
+  import AgoraRTM from "agora-rtm-sdk";
   import { onMount } from "svelte";
-  import Pusher from "pusher-js";
+  import { v4 as uuidv4 } from "uuid";
 
-  let username = "username";
-  let message = "";
+  const APP_ID = "452f99a0814b44d29d9a446ec20356fc";
+  const CHANNEL = "wdj";
+
+  let client = AgoraRTM.createInstance(APP_ID);
+  let uid = uuidv4();
+  let text = "";
+  let messagesRef;
   let messages = [];
 
-  const submit = async () => {
-    await fetch("http://localhost:8000/api/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username,
-        message,
-      }),
-    });
+  // set onMount
+  let channel;
 
-    message = "";
+  const appendMessage = message => {
+    messages = [...messages, message];
+    requestAnimationFrame(() => {
+      messagesRef.scrollTop = messagesRef.scrollHeight;
+    });
   };
+
+  onMount(async () => {
+    await client.login({ uid, token: null });
+    channel = await client.createChannel(CHANNEL);
+    await channel.join();
+    channel.on("ChannelMessage", (message, peerId) => {
+      appendMessage({
+        text: message.text,
+        uid: peerId
+      });
+    });
+  });
+
+  function sendMessage() {
+    if (text === "") return;
+    channel.sendMessage({ text, type: "text" });
+    appendMessage({
+      text: text,
+      uid
+    });
+    text = "";
+  }
 </script>
 
-<div class="container">
-  <div class="d-flex flex-column align-items-stretch flex-shrink-0 bg-white">
-    <div
-      class="d-flex align-items-center flex-shrink-0 p-3 link-dark text-decoration-none border-bottom"
-    >
-      <input class="fs-5 fw-semibold" bind:value={username} />
-    </div>
-    <div class="list-group list-group-flush border-bottom scrollarea">
-      {#each messages as msg}
-        <div class="list-group-item list-group-item-action py-3 lh-tight">
-          <div class="d-flex w-100 align-items-center justify-content-between">
-            <strong class="mb-1">{msg.username}</strong>
-          </div>
-          <div class="col-10 mb-1 small">{msg.message}</div>
-        </div>
-      {/each}
-    </div>
-  </div>
-  <form on:submit|preventDefault={submit}>
-    <input
-      class="form-control"
-      placeholder="Write a message"
-      bind:value={message}
-    />
-  </form>
-</div>
-
 <style>
-  .scrollarea {
-    min-height: 500px;
+  :root {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+      Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+
+    background: rgb(130, 209, 255);
+    background: linear-gradient(
+      90deg,
+      rgb(174, 220, 238) 0%,
+      rgba(194, 180, 217, 1) 49%,
+      rgba(148, 187, 233, 1) 100%
+    );
+  }
+
+  main {
+    text-align: center;
+    padding: 1em;
+    margin: 0 auto;
+  }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    margin: 0 auto;
+    max-width: 300px;
+    height: 300px;
+    background: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    backdrop-filter: blur(4px);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  .messages {
+    height: 100%;
+    width: 100%;
+    overflow-y: scroll;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    background-color: white;
+  }
+
+  .inner {
+    padding: 10px;
+  }
+
+  .message {
+    text-align: left;
+    display: flex;
+    margin-bottom: 6px;
+  }
+
+  .user-self {
+    color: green;
+  }
+
+  .user-them {
+    color: red;
+  }
+
+  form {
+    position: relative;
+    display: flex;
+  }
+
+  input {
+    width: 100%;
+    border: none;
+    height: 20px;
+    padding: 8px;
+    border-top: 1px solid #999;
+    border-radius: 0px;
+    outline: none;
+  }
+
+  button {
+    border: none;
+    outline: none;
+    background: none;
+    position: absolute;
+    right: 3px;
+    top: 4px;
+    font-size: 24px;
   }
 </style>
+
+<main>
+  <div class="panel">
+    <div class="messages" bind:this={messagesRef}>
+      <div class="inner">
+        {#each messages as message}
+          <div class="message">
+            {#if message.uid === uid}
+              <div class="user-self">You:&nbsp;</div>
+            {:else}
+              <div class="user-them">Them:&nbsp;</div>
+            {/if}
+            <div class="text">{message.text}</div>
+          </div>
+        {/each}
+      </div>
+    </div>
+
+    <form on:submit|preventDefault={sendMessage}>
+      <input bind:value={text} />
+      <button>+</button>
+    </form>
+  </div>
+</main>
