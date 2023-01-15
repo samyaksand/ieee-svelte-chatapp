@@ -12,10 +12,10 @@
   let messagesRef;
   let messages = [];
 
-  // set onMount
+  // Samyak Sanjay Sand - IEEE Mumbai Internship - Realtime ChatApp using SvelteJS and ViteJS framework
   let channel;
 
-  const appendMessage = message => {
+  const appendMessage = (message) => {
     messages = [...messages, message];
     requestAnimationFrame(() => {
       messagesRef.scrollTop = messagesRef.scrollHeight;
@@ -29,7 +29,7 @@
     channel.on("ChannelMessage", (message, peerId) => {
       appendMessage({
         text: message.text,
-        uid: peerId
+        uid: peerId,
       });
     });
   });
@@ -39,11 +39,35 @@
     channel.sendMessage({ text, type: "text" });
     appendMessage({
       text: text,
-      uid
+      uid,
     });
     text = "";
   }
 </script>
+
+<main>
+  <div class="panel">
+    <div class="messages" bind:this={messagesRef}>
+      <div class="inner">
+        {#each messages as message}
+          <div class="message">
+            {#if message.uid === uid}
+              <div class="user-self">You:&nbsp;</div>
+            {:else}
+              <div class="user-them">Them:&nbsp;</div>
+            {/if}
+            <div class="text">{message.text}</div>
+          </div>
+        {/each}
+      </div>
+    </div>
+
+    <form on:submit|preventDefault={sendMessage}>
+      <input bind:value={text} />
+      <button>+</button>
+    </form>
+  </div>
+</main>
 
 <style>
   :root {
@@ -131,27 +155,3 @@
     font-size: 24px;
   }
 </style>
-
-<main>
-  <div class="panel">
-    <div class="messages" bind:this={messagesRef}>
-      <div class="inner">
-        {#each messages as message}
-          <div class="message">
-            {#if message.uid === uid}
-              <div class="user-self">You:&nbsp;</div>
-            {:else}
-              <div class="user-them">Them:&nbsp;</div>
-            {/if}
-            <div class="text">{message.text}</div>
-          </div>
-        {/each}
-      </div>
-    </div>
-
-    <form on:submit|preventDefault={sendMessage}>
-      <input bind:value={text} />
-      <button>+</button>
-    </form>
-  </div>
-</main>
